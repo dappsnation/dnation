@@ -1,6 +1,45 @@
 {
   "version": 1,
-  "projects": {},
+  "projects": {
+    "entity-form": {
+      "projectType": "library",
+      "root": "libs/entity-form",
+      "sourceRoot": "libs/entity-form/src",
+      "prefix": "dappsnation",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-ng-packagr:build",
+          "options": {
+            "tsConfig": "libs/entity-form/tsconfig.lib.json",
+            "project": "libs/entity-form/ng-package.json"
+          }
+        },
+        "lint": {
+          "builder": "@angular-devkit/build-angular:tslint",
+          "options": {
+            "tsConfig": [
+              "libs/entity-form/tsconfig.lib.json",
+              "libs/entity-form/tsconfig.spec.json"
+            ],
+            "exclude": ["**/node_modules/**", "!libs/entity-form/**"]
+          }
+        },
+        "test": {
+          "builder": "@nrwl/jest:jest",
+          "options": {
+            "jestConfig": "libs/entity-form/jest.config.js",
+            "tsConfig": "libs/entity-form/tsconfig.spec.json",
+            "setupFile": "libs/entity-form/src/test-setup.ts"
+          }
+        }
+      },
+      "schematics": {
+        "@nrwl/angular:component": {
+          "styleext": "scss"
+        }
+      }
+    }
+  },
   "cli": {
     "defaultCollection": "@nrwl/angular"
   },
@@ -12,5 +51,6 @@
     "@nrwl/angular:library": {
       "unitTestRunner": "jest"
     }
-  }
+  },
+  "defaultProject": "entity-form"
 }
