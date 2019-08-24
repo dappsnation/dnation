@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
-import { Web3Provider } from '@ethersproject/providers';
+import { Web3Provider, BaseProvider } from '@ethersproject/providers';
 import { BehaviorSubject } from 'rxjs';
+import { getDefaultProvider } from 'ethers';
+import { RPCMethods } from './rpic-methods';
 
 export const enum NetworkID {
   mainnet = '1',
@@ -12,14 +14,29 @@ export const enum NetworkID {
   xDai = '100',
 }
 
+const requireSigner: RPCMethods[] = [
+  'eth_getBalance',
+  'eth_getStorageAt',
+  'eth_getCode',
+  'eth_sendTransaction',
+  'eth_sendRawTransaction'
+];
+const optionalSigner: RPCMethods[] = [
+  'eth_call',
+  'eth_estimateGas'
+];
+
 @Injectable({ providedIn: 'root' })
 export class MetaMaskProvider extends Web3Provider {
   readonly _web3Provider: any;
+  private fallbackProvider: BaseProvider;
   private _enabled = new BehaviorSubject<boolean>(false);
   public enabled$ = this._enabled.asObservable();
 
   constructor() {
     super((window as any).ethereum);
+    // TODO : map networkVersion to Ethers network.
+    this.fallbackProvider = getDefaultProvider(this._web3Provider.networkVersion);
   }
 
   get enabled() {
@@ -29,11 +46,22 @@ export class MetaMaskProvider extends Web3Provider {
     this._enabled.next(isEnabled);
   }
 
-  async send(method: string, params: any): Promise<any> {
-    if (method === 'eth_call' || method === 'eth_sendTransaction' || method === 'eth_sendRawTransaction') {
-      if (!this.enabled) this.enable();
+  async send(method: RPCMethods, params: any): Promise<any> {
+    if (this.enabled) {
+      return super.send(method, params);
+    } else if (requireSigner.includes(method)) {
+      await this.enable();
+      return super.send(method, params);
+    } else {
+      if (optionalSigner.includes(method) && params['from']) {
+        await this.enable();
+        return super.send(method, params);
+      }
+      switch (method) {
+        case 'eth_network': return this.fallbackProvider.getNetwork();
+        // TODO: add other methods
+      }
     }
-    return super.send(method, params);
   }
 
   /** Ask permission to use MetaMask's Provider */
@@ -41,6 +69,7 @@ export class MetaMaskProvider extends Web3Provider {
     if (!this.enabled) {
       const [address] = await this._web3Provider.enable();
       this.enabled = !!address;
+      delete this.fallbackProvider;
     }
   }
 
