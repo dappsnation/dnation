@@ -29,6 +29,13 @@ export class MetaMaskProvider extends Web3Provider {
     this._enabled.next(isEnabled);
   }
 
+  async send(method: string, params: any): Promise<any> {
+    if (method === 'eth_call' || method === 'eth_sendTransaction' || method === 'eth_sendRawTransaction') {
+      if (!this.enabled) this.enable();
+    }
+    return super.send(method, params);
+  }
+
   /** Ask permission to use MetaMask's Provider */
   async enable() {
     if (!this.enabled) {

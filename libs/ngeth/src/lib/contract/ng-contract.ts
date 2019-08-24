@@ -1,6 +1,7 @@
+import { inject } from '@angular/core';
 import { Contract, ContractInterface } from '@ethersproject/contracts';
 import { Provider } from '@ethersproject/providers';
-import { inject } from '@angular/core';
+import { Signer } from '@ethersproject/abstract-signer';
 import { NETWORK, PROVIDER } from '../tokens';
 import { Observable, fromEvent } from 'rxjs';
 
@@ -26,7 +27,7 @@ export class NgContract<T extends IContract = any> extends Contract {
   constructor(
     addresses: Record<string, string>,
     abi: ContractInterface,
-    provider?: Provider
+    provider?: Provider | Signer
   ) {
     // Get address
     const network = inject<string>(NETWORK);

@@ -19,6 +19,7 @@ interface HDNodeOption {
   path: string;
 }
 
+
 export abstract class MultiAccountsWallet extends Signer implements ExternallyOwnedAccount {
   private _signingKey: () => ExternallyOwnedAccount;
 
@@ -26,8 +27,11 @@ export abstract class MultiAccountsWallet extends Signer implements ExternallyOw
   private _accounts = new BehaviorSubject<string[]>([]);
   private _encrypting = new BehaviorSubject<number>(null);
   private _hasSigningKey = new BehaviorSubject<boolean>(false);
+  /** The current address selected */
   public address$ = this._address.asObservable();
+  /** The list of the accounts managed by the wallet */
   public accounts$ = this._accounts.asObservable();
+  /** When Encrypting, return the percentage */
   public encrypting$ = this._encrypting.asObservable();
   /** Is the signing Key accessible */
   public hasSigningKey$ = this._hasSigningKey.asObservable();
@@ -57,18 +61,16 @@ export abstract class MultiAccountsWallet extends Signer implements ExternallyOw
 
   /** The private of the current Account */
   get privateKey(): string {
-    if (!this.hasSigningKey) {
-      return
+    if (this.hasSigningKey) {
+      return this._signingKey().privateKey;
     }
-    return this._signingKey().privateKey;
   }
 
   /** The mnemonic of the current Account */
   get mnemonic(): string {
     if (!this.hasSigningKey) {
-      return
+      return this._signingKey().mnemonic;
     }
-    return this._signingKey().mnemonic;
   }
 
   /** Is the signing key stored in memory */
