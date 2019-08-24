@@ -1,5 +1,5 @@
 {
-  "name": "dappsnation",
+  "name": "dnation",
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
@@ -29,7 +29,6 @@
   },
   "private": true,
   "dependencies": {
-    "@nrwl/angular": "^8.4.3",
     "@angular/animations": "^8.0.0",
     "@angular/common": "^8.0.0",
     "@angular/compiler": "^8.0.0",
@@ -38,6 +37,8 @@
     "@angular/platform-browser": "^8.0.0",
     "@angular/platform-browser-dynamic": "^8.0.0",
     "@angular/router": "^8.0.0",
+    "@ethersproject/providers": "^5.0.0-beta.127",
+    "@nrwl/angular": "^8.4.3",
     "core-js": "^2.5.4",
     "rxjs": "~6.4.0",
     "tslib": "^1.9.0",

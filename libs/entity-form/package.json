@@ -1,5 +1,5 @@
 {
-  "name": "@dappsnation/entity-form",
+  "name": "@dnation/entity-form",
   "version": "0.0.1",
   "peerDependencies": {
     "@angular/forms": "^8.1.1"

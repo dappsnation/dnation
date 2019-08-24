@@ -43,9 +43,14 @@ describe('Form Entity', () => {
     form = new MovieForm(MOVIES);
   })
 
+
   test('Created', () => {
     expect(form).toBeDefined();
   })
+
+  /////////////
+  // GETTERS //
+  /////////////
 
   test('getAll()', () => {
     const movies = form.getAll();
@@ -57,6 +62,10 @@ describe('Form Entity', () => {
     const result = MOVIES.find(({ id }) => id === '123')
     expect(movie).toEqual(result);
   })
+
+  /////////////
+  // SETTERS //
+  /////////////
 
   test('add()', () => {
     const movie = { id: '789', title: 'Harry Potter 3', rating: 10 };
@@ -125,6 +134,10 @@ describe('Form Entity', () => {
     expect(form.getEntity('789').rating).toEqual(5);
   })
 
+  ////////////////
+  // OBSERVABLE //
+  ////////////////
+
   test('valueChanges$ (initial value)', (done) => {
     form.valueChanges$.subscribe(movies => {
       expect(movies).toEqual(form.value);
@@ -157,5 +170,17 @@ describe('Form Entity', () => {
       done();
     })
     form.setActive('123');
+  })
+
+  ////////////////////////
+  // PRISTINE / TOUCHED //
+  ////////////////////////
+
+  test('dirty', () => {
+    expect(form.pristine).toBeTruthy();
+    form.get('123').markAsDirty();
+    expect(form.pristine).toBeFalsy();
+    form.markAsPristine();
+    expect(form.get('123').pristine).toBeTruthy();
   })
 });

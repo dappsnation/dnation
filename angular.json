@@ -5,7 +5,7 @@
       "projectType": "library",
       "root": "libs/entity-form",
       "sourceRoot": "libs/entity-form/src",
-      "prefix": "dappsnation",
+      "prefix": "dnation",
       "architect": {
         "build": {
           "builder": "@angular-devkit/build-ng-packagr:build",
@@ -30,6 +30,44 @@
             "jestConfig": "libs/entity-form/jest.config.js",
             "tsConfig": "libs/entity-form/tsconfig.spec.json",
             "setupFile": "libs/entity-form/src/test-setup.ts"
+          }
+        }
+      },
+      "schematics": {
+        "@nrwl/angular:component": {
+          "styleext": "scss"
+        }
+      }
+    },
+    "ngeth": {
+      "projectType": "library",
+      "root": "libs/ngeth",
+      "sourceRoot": "libs/ngeth/src",
+      "prefix": "eth",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-ng-packagr:build",
+          "options": {
+            "tsConfig": "libs/ngeth/tsconfig.lib.json",
+            "project": "libs/ngeth/ng-package.json"
+          }
+        },
+        "lint": {
+          "builder": "@angular-devkit/build-angular:tslint",
+          "options": {
+            "tsConfig": [
+              "libs/ngeth/tsconfig.lib.json",
+              "libs/ngeth/tsconfig.spec.json"
+            ],
+            "exclude": ["**/node_modules/**", "!libs/ngeth/**"]
+          }
+        },
+        "test": {
+          "builder": "@nrwl/jest:jest",
+          "options": {
+            "jestConfig": "libs/ngeth/jest.config.js",
+            "tsConfig": "libs/ngeth/tsconfig.spec.json",
+            "setupFile": "libs/ngeth/src/test-setup.ts"
           }
         }
       },

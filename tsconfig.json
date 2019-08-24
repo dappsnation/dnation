@@ -16,7 +16,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@dappsnation/entity-form": ["libs/entity-form/src/index.ts"]
+      "@dnation/entity-form": ["libs/entity-form/src/index.ts"],
+      "@dnation/ngeth": ["libs/ngeth/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

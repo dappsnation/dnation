@@ -1,5 +1,5 @@
 {
-  "npmScope": "dappsnation",
+  "npmScope": "dnation",
   "implicitDependencies": {
     "angular.json": "*",
     "package.json": "*",
@@ -10,6 +10,9 @@
   "projects": {
     "entity-form": {
       "tags": ["forms"]
+    },
+    "ngeth": {
+      "tags": ["eth"]
     }
   }
 }
