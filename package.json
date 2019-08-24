@@ -37,9 +37,11 @@
     "@angular/platform-browser": "^8.0.0",
     "@angular/platform-browser-dynamic": "^8.0.0",
     "@angular/router": "^8.0.0",
+    "@ethersproject/contracts": "^5.0.0-beta.125",
     "@ethersproject/providers": "^5.0.0-beta.127",
     "@nrwl/angular": "^8.4.3",
     "core-js": "^2.5.4",
+    "ethers": "^5.0.0-beta.155",
     "rxjs": "~6.4.0",
     "tslib": "^1.9.0",
     "zone.js": "^0.9.1"
