@@ -2,12 +2,19 @@ import { ExternallyOwnedAccount, Signer } from '@ethersproject/abstract-signer';
 import { Provider } from '@ethersproject/abstract-provider';
 import { TransactionRequest } from '@ethersproject/abstract-provider';
 import { SigningKey } from "@ethersproject/signing-key";
-import { defaultPath, HDNode } from "@ethersproject/hdnode";
-import { Bytes } from "@ethersproject/bytes";
+import { defaultPath, HDNode, entropyToMnemonic } from "@ethersproject/hdnode";
+import { Bytes, BytesLike } from "@ethersproject/bytes";
 import { Wordlist } from "@ethersproject/wordlists/wordlist";
-import { BehaviorSubject, Observable } from 'rxjs';
+import { decryptJsonWallet, ProgressCallback  } from '@ethersproject/json-wallets';
+import { randomBytes } from "@ethersproject/random";
+import { BehaviorSubject, Subject, Observable } from 'rxjs';
 import { Vault } from './vault';
-import { decryptJsonWallet } from '@ethersproject/json-wallets';
+import { isJsonKeyStore, isMnemonic, isPrivateKey } from './helpers';
+
+interface HDNodeOption {
+  locale: Wordlist;
+  path: string;
+}
 
 export class HDWallet extends Signer implements ExternallyOwnedAccount {
   private _signingKey: () => SigningKey;
@@ -19,7 +26,7 @@ export class HDWallet extends Signer implements ExternallyOwnedAccount {
 
   privateKey: string;
   mnemonic?: string;
-  path?: string;
+  path = defaultPath;
 
   constructor(
     public vault?: Vault,
@@ -42,13 +49,14 @@ export class HDWallet extends Signer implements ExternallyOwnedAccount {
     return this._address.getValue();
   }
 
-  set address(address: string) {
-    this._address.next(address);
-  }
-
   //////////////
   // GENERATE //
   //////////////
+  fromRandom(length: 16 | 20 | 24 | 28 | 32 = 16, options?: Partial<HDNodeOption>) {
+    const entropy: Uint8Array = randomBytes(16);
+    const mnemonic = entropyToMnemonic(entropy, options.locale);
+    return this.fromMnemonic(mnemonic, options.path, options.locale);
+  }
 
   /**
    * Generate an HDNode from memonic and add it to the list of accounts
@@ -56,17 +64,63 @@ export class HDWallet extends Signer implements ExternallyOwnedAccount {
    * @param path
    * @param wordlist
    */
-  fromMnemonic(mnemonic: string, path?: string, wordlist?: Wordlist) {
-    const hdnode = HDNode
-      .fromMnemonic(mnemonic, null, wordlist)
-      .derivePath(path || defaultPath);
+  fromMnemonic(mnemonic: string, path: string  = this.path, wordlist?: Wordlist): HDNode {
+    return HDNode.fromMnemonic(mnemonic, null, wordlist).derivePath(path);
+  }
+
+  fromEncryptedJson(json: string, password: Bytes | string, progress?: ProgressCallback): Promise<HDNode> {
+    return decryptJsonWallet(json, password, progress)
+  }
+
+  fromPrivateKey(privateKey: string | BytesLike) {
+    return new SigningKey(privateKey);
+  }
+
+  ////////////////////
+  // MANAGE ACCOUNT //
+  ////////////////////
+  async add(password: string, key?: string) {
+    let account: HDNode;
+    if(key) {
+      if (isJsonKeyStore(key)) {
+        account = await this.fromEncryptedJson(key, password);
+      } else if (isMnemonic(key)) {
+        account = this.fromMnemonic(key);
+      } else if (isPrivateKey(key)) {
+        account = this.fromPrivateKey(key); // TODO convert to HD node
+      } else {
+        throw new Error(`Unkown key type ! Please provide a json keystore, a private key, or a valid mnemonic.`);
+      }
+    } else { // no key -> create random
+      account = this.fromRandom();
+    }
+  }
+
+  setAccounts() {
 
   }
 
-  fromEncryptedJson(json: string, password: Bytes | string): Observable<number> {
-    // TODO : get percentage from callback
-    // decryptJsonWallet(json, password, )
-    throw new Error('No implmemented');
+  setActive(address: string) {
+    this.vault.get(address);
+  }
+
+  /////////////////
+  // GET ACCOUNT //
+  /////////////////
+  getEncryptedJson(address: string = this.address): Promise<string> {
+    return this.vault.get(address);
+  }
+
+  async getPrivateKey(password: string, address: string = this.address) {
+    const json = await this.getEncryptedJson(address);
+    const keystore = await decryptJsonWallet(json, password);
+    return keystore.privateKey;
+  }
+
+  async getMnemonic(password: string, address: string = this.address) {
+    const json = await this.getEncryptedJson(address);
+    const keystore = await decryptJsonWallet(json, password);
+    return keystore.mnemonic;
   }
 
   /** Get the current address selected */
@@ -75,7 +129,7 @@ export class HDWallet extends Signer implements ExternallyOwnedAccount {
   }
 
   signMessage(message: string | ArrayLike<number>): Promise<string> {
-    throw new Error('No implmemented');
+    return this.signMessage(message);
   }
 
   signTransaction(transaction: TransactionRequest): Promise<string> {

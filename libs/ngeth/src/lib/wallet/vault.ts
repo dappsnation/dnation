@@ -1,4 +1,4 @@
 export abstract class Vault {
-  abstract get(key: string): string;
-  abstract set(key: string, content: string);
+  abstract get(address: string): Promise<string>;
+  abstract set(address: string, json: string): Promise<any>;
 }
