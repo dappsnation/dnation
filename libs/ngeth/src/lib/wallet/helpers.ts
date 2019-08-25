@@ -1,6 +1,6 @@
 
-import { HDNode } from "@ethersproject/hdnode";
-import { KeystoreAccount } from '@ethersproject/json-wallets/keystore';
+import { HDNode, entropyToMnemonic } from "@ethersproject/hdnode";
+import { isKeystoreWallet } from '@ethersproject/json-wallets/inspect';
 import { SigningKey } from '@ethersproject/signing-key';
 
 export function isMnemonic(text: string) {
@@ -13,15 +13,15 @@ export function isMnemonic(text: string) {
 }
 
 export function isJsonKeyStore(text: string) {
-  try {
-    const json = JSON.parse(text);
-    return json instanceof KeystoreAccount;
-  } catch(e) {
-    return false;
-  }
+  return isKeystoreWallet(text); // ! WARNING ethers perform check only on the version parameters of the keystore
 }
 
-// isSigningKey https://github.com/ethers-io/ethers.js/blob/ethers-v5-beta/packages/wallet/src.ts/index.ts#L67
+/** check if the input string is any 32 bytes hex string */
 export function isPrivateKey(text: string) {
-  return SigningKey.isSigningKey(text);
+  try {
+    entropyToMnemonic(text);
+    return true;
+  } catch(err) {
+    return false;
+  }
 }
