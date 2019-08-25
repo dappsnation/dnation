@@ -249,7 +249,7 @@ export abstract class MultiAccountsWallet extends Signer implements ExternallyOw
   }
 
   signTransaction(transaction: TransactionRequest): Promise<string> {
-    throw new Error('Method not implemented.');
+    return this.signTransaction(transaction);
   }
 
   connect(provider: Provider): Signer {
