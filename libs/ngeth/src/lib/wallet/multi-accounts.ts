@@ -3,16 +3,20 @@ import { Provider } from '@ethersproject/abstract-provider';
 import { TransactionRequest } from '@ethersproject/abstract-provider';
 import { SigningKey } from "@ethersproject/signing-key";
 import { defaultPath, HDNode, entropyToMnemonic } from "@ethersproject/hdnode";
-import { BytesLike } from "@ethersproject/bytes";
+import { BytesLike, joinSignature } from "@ethersproject/bytes";
 import { Wordlist } from "@ethersproject/wordlists/wordlist";
 import { decryptJsonWallet, ProgressCallback, encryptKeystore, EncryptOptions } from '@ethersproject/json-wallets';
 import { randomBytes } from "@ethersproject/random";
+import { keccak256 } from "@ethersproject/keccak256";
+import { hashMessage } from "@ethersproject/hash";
 import { computeAddress, recoverAddress, serialize } from "@ethersproject/transactions";
-import { BehaviorSubject } from 'rxjs';
-import { Vault } from './vault';
-import { isJsonKeyStore, isMnemonic, isPrivateKey } from './helpers';
 import { KeystoreAccount } from '@ethersproject/json-wallets/keystore';
-import { defineReadOnly } from 'ethers/utils';
+import { getAddress } from "@ethersproject/address";
+import { defineReadOnly, resolveProperties } from "@ethersproject/properties";
+import { isJsonKeyStore, isMnemonic, isPrivateKey } from './helpers';
+import { Vault } from './vault/vault';
+import { BehaviorSubject } from 'rxjs';
+import { WalletAction, WalletMsg, walletMsg, WalletManager } from './wallet-manager';
 
 interface HDNodeOption {
   locale: Wordlist;
@@ -21,7 +25,8 @@ interface HDNodeOption {
 
 
 export abstract class MultiAccountsWallet extends Signer implements ExternallyOwnedAccount {
-  private _signingKey: () => ExternallyOwnedAccount;
+  private _signingKey: () => SigningKey;
+  private _mnemonic: () => string;
 
   private _address = new BehaviorSubject<string>(null);
   private _accounts = new BehaviorSubject<string[]>([]);
@@ -42,12 +47,11 @@ export abstract class MultiAccountsWallet extends Signer implements ExternallyOw
 
   constructor(
     public vault: Vault,
+    public manager: WalletManager,
     public provider?: Provider
   ) {
     super();
   }
-
-  abstract requestPassword(): Promise<string>;
 
   /** List of accounts */
   get accounts(): string[] {
@@ -69,13 +73,32 @@ export abstract class MultiAccountsWallet extends Signer implements ExternallyOw
   /** The mnemonic of the current Account */
   get mnemonic(): string {
     if (!this.hasSigningKey) {
-      return this._signingKey().mnemonic;
+      return this._mnemonic();
     }
   }
 
   /** Is the signing key stored in memory */
   get hasSigningKey(): boolean {
     return !!this._signingKey;
+  }
+
+  /////////////
+  // REQUIRE //
+  /////////////
+  /** Be sure that the address is settled */
+  private async requireAddress() {
+    if (!this.address) {
+      const address = await this.manager.requestAddress();
+      this.setAddress(address);
+    }
+  }
+
+  /** Be sure that the signing key is settled */
+  private async requireSigningKey() {
+    if (!this.hasSigningKey) {
+      await this.requireAddress();
+      this.activate(this.address);
+    }
   }
 
   //////////////
@@ -106,14 +129,11 @@ export abstract class MultiAccountsWallet extends Signer implements ExternallyOw
   /**
    * Create an account of the encrypted json
    * @param json A stringify version of the keystore
-   * @param progress A callback function to display progress of encryption
+   * @param msg A wallet message to display UI content
    */
-  async fromEncryptedJson(json: string, progress?: ProgressCallback): Promise<ExternallyOwnedAccount> {
-    const password = await this.requestPassword();
-    const account = decryptJsonWallet(json, password, (percent) => {
-      if(progress) progress(percent);
-      this._encrypting.next(percent);
-    });
+  async fromEncryptedJson(json: string, msg: WalletMsg): Promise<ExternallyOwnedAccount> {
+    const password = await this.manager.requestPassword(msg);
+    const account = decryptJsonWallet(json, password, (percent) => this._encrypting.next(percent));
     this._encrypting.next(null);
     return account;
   }
@@ -167,7 +187,8 @@ export abstract class MultiAccountsWallet extends Signer implements ExternallyOw
       }
     }
     if (account) {
-      const password = await this.requestPassword();
+      const msg = walletMsg(WalletAction.add, account.address);
+      const password = await this.manager.requestPassword(msg);
       address = account.address;
       json = await encryptKeystore(account, password);
     }
@@ -180,7 +201,8 @@ export abstract class MultiAccountsWallet extends Signer implements ExternallyOw
   //////////////
   /** Set the signing key into memory for a time. Next transactions won't require a password */
   private async setSigningKey(account: ExternallyOwnedAccount, ttl: number = this.ttl) {
-    defineReadOnly(this, '_signingKey', () => account);
+    defineReadOnly(this, '_signingKey', () => new SigningKey(account.privateKey));
+    defineReadOnly(this, '_mnemonic', () => account.mnemonic);
     this._hasSigningKey.next(true);
     setTimeout(() => this.deleteSigningKey(), ttl); // Remove signing key after ttl
   }
@@ -194,13 +216,14 @@ export abstract class MultiAccountsWallet extends Signer implements ExternallyOw
   /** Set Signing key into memory and activate the address */
   async activate(address: string) {
     const json = await this.vault.get(address);
-    const signingKey = await this.fromEncryptedJson(json);
+    const msg = walletMsg(WalletAction.activate, address);
+    const signingKey = await this.fromEncryptedJson(json, msg);
     this.setSigningKey(signingKey);
-    this.setActive(address);
+    this.setAddress(address);
   }
 
   /** Select the address to be the one used by the Signer */
-  async setActive(address: string) {
+  async setAddress(address: string) {
     if (this.accounts.includes(address)) {
       throw new Error(`Address ${address} is part of the wallet accounts`);
     }
@@ -222,7 +245,8 @@ export abstract class MultiAccountsWallet extends Signer implements ExternallyOw
       return this.privateKey;
     }
     const json = await this.getEncryptedJson(address);
-    const keystore = await this.fromEncryptedJson(json);
+    const msg = walletMsg(WalletAction.privateKey, address);
+    const keystore = await this.fromEncryptedJson(json, msg);
     return keystore.privateKey;
   }
 
@@ -232,7 +256,8 @@ export abstract class MultiAccountsWallet extends Signer implements ExternallyOw
       return this.mnemonic;
     }
     const json = await this.getEncryptedJson(address);
-    const keystore = await this.fromEncryptedJson(json);
+    const msg = walletMsg(WalletAction.mnemonic, address);
+    const keystore = await this.fromEncryptedJson(json, msg);
     return keystore.mnemonic;
   }
 
@@ -244,12 +269,28 @@ export abstract class MultiAccountsWallet extends Signer implements ExternallyOw
   ////////////
   // CRYPTO //
   ////////////
-  signMessage(message: string | ArrayLike<number>): Promise<string> {
-    return this.signMessage(message);
+  /**
+   * Sign a message with the current private key
+   * @param message
+   */
+  async signMessage(message: string | ArrayLike<number>): Promise<string> {
+    await this.requireAddress();
+    await this.requireSigningKey();
+    const signature = this._signingKey().signDigest(hashMessage(message));
+    return joinSignature(signature);
   }
 
-  signTransaction(transaction: TransactionRequest): Promise<string> {
-    return this.signTransaction(transaction);
+  async signTransaction(transaction: TransactionRequest): Promise<string> {
+    const tx = await resolveProperties(transaction);
+    if (tx.from !== null) {
+      if (getAddress(tx.from) !== this.address) {
+        throw new Error("transaction from address mismatch");
+      }
+      delete tx.from;
+    }
+    const hash = keccak256(serialize(tx))
+    const signature = this._signingKey().signDigest(hash);
+    return serialize(tx, signature);
   }
 
   connect(provider: Provider): Signer {
