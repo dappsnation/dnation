@@ -12,4 +12,8 @@ export abstract class Vault {
   // tslint:disable-next-line: unified-signatures
   abstract set(address: string, json: string): Promise<any>;
   abstract set(key: KeyVault, payload: string | string[]): Promise<any>;
+
+  abstract delete(key: KeyVault): Promise<any>;
+
+  abstract clear(): Promise<any>;
 }
