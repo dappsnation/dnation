@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Web3Provider, BaseProvider } from '@ethersproject/providers';
 import { BehaviorSubject } from 'rxjs';
 import { getDefaultProvider } from 'ethers';
-import { RPCMethods } from './rpic-methods';
+import { RPCMethods } from './rpc-methods';
 
 export const enum NetworkID {
   mainnet = '1',
@@ -58,7 +58,7 @@ export class MetaMaskProvider extends Web3Provider {
         return super.send(method, params);
       }
       switch (method) {
-        case 'eth_network': return this.fallbackProvider.getNetwork();
+        case 'net_version': return this.fallbackProvider.getNetwork();
         // TODO: add other methods
       }
     }

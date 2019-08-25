@@ -1,5 +1,7 @@
-/** [detailed documentation](https://github.com/ethereum/wiki/wiki/JSON-RPC#json-rpc-methods) */
 export const rpcMethods = [
+  'net_version',
+  'net_listening',
+  'net_peerCount',
   'eth_protocolVersion',
   'eth_syncing',
   'eth_coinbase',
@@ -45,6 +47,8 @@ export const rpcMethods = [
   'eth_submitWork',
   'eth_submitHashrate',
   'eth_getProof',
+  'eth_subscribe',
+  'eth_unsubscribe',
 ] as const;
 
 export type RPCMethods = (typeof rpcMethods)[number];
