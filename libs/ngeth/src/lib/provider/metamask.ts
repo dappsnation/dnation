@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Web3Provider, BaseProvider } from '@ethersproject/providers';
 import { BehaviorSubject } from 'rxjs';
-import { getDefaultProvider } from 'ethers';
+import { getDefaultProvider, ethers } from 'ethers';
 import { RPCMethods } from './rpc-methods';
 
 export const enum NetworkID {
@@ -59,6 +59,9 @@ export class MetaMaskProvider extends Web3Provider {
       }
       switch (method) {
         case 'net_version': return this.fallbackProvider.getNetwork();
+        case 'eth_blockNumber': return this.fallbackProvider.getBlockNumber();
+        case 'eth_accounts': return (window as any).ethereum;
+        case 'eth_getBlockByHash': return this.fallbackProvider.getBlock(params);
         // TODO: add other methods
       }
     }
