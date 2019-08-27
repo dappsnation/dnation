@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Web3Provider, BaseProvider } from '@ethersproject/providers';
 import { BehaviorSubject } from 'rxjs';
-import { getDefaultProvider, ethers } from 'ethers';
+import { getDefaultProvider } from 'ethers';
 import { RPCMethods } from './rpc-methods';
 
 export const enum NetworkID {
