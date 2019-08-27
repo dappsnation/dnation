@@ -59,6 +59,7 @@ export class MetaMaskProvider extends Web3Provider {
       }
       switch (method) {
         case 'net_version': return this.fallbackProvider.getNetwork();
+        case 'net_listening': return this.fallbackProvider.listenerCount();
         case 'eth_blockNumber': return this.fallbackProvider.getBlockNumber();
         case 'eth_accounts': return (window as any).ethereum;
         case 'eth_getBlockByHash': return this.fallbackProvider.getBlock(params);
