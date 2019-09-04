@@ -1,4 +1,4 @@
-import { EntityControl } from "./entity.control";
+import { EntityControl, RecordControl } from "./entity.control";
 import { FormControl, FormGroup } from '@angular/forms';
 
 interface MovieStory {
@@ -13,7 +13,7 @@ interface Movie {
   story?: MovieStory;
 }
 
-class MovieStory extends EntityControl<MovieStory> {
+class MovieStoryForm extends EntityControl<MovieStory> {
   constructor(story: Partial<MovieStory> = {}) {
     super({
       synopsis: new FormControl(story.synopsis),
@@ -22,15 +22,21 @@ class MovieStory extends EntityControl<MovieStory> {
   }
 }
 
-class MovieControl extends EntityControl<Movie> {
+const movieControl = (entity: Partial<Movie> = {}) => ({
+  id: new FormControl(entity.id),
+  title: new FormControl(entity.title),
+  rating: new FormControl(entity.rating),
+  story: new MovieStoryForm(entity.story)
+});
+
+type MovieControl = ReturnType<typeof movieControl>;
+
+
+class MovieForm extends EntityControl<Movie, MovieControl> {
 
   constructor(entity: Movie) {
-    super({
-      id: new FormControl(entity.id),
-      title: new FormControl(entity.title),
-      rating: new FormControl(entity.rating),
-      story: new MovieStory(entity.story)
-    });
+    const controls = movieControl(entity);
+    super(controls);
   }
 }
 
@@ -40,20 +46,20 @@ const MOVIE: Movie = {
   rating: 1
 };
 
-describe('MovieControl', () => {
-  let control: MovieControl;
+describe('MovieForm', () => {
+  let control: MovieForm;
 
   beforeEach(() => {
-    control = new MovieControl(MOVIE);
+    control = new MovieForm(MOVIE);
   })
 
   test('Created', () => {
     expect(control).toBeDefined();
   })
 
-  test('patchValue()', () => {
+  test('getPrunedValue()', () => {
     const update = { title: 'Harry Potter 2', rating: 2 };
     control.patchValue(update);
-    expect(control.value).toEqual({ ...MOVIE, ...update });
+    expect(control.getPrunedValue()).toEqual({ ...MOVIE, ...update });
   })
 })

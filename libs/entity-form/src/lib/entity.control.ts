@@ -1,58 +1,43 @@
 import { FormGroup, AbstractControl, ValidatorFn, AbstractControlOptions, AsyncValidatorFn, FormControl, FormArray } from '@angular/forms';
 import { UpdateOptions } from './type';
 
-type RecordControl<E> = Partial<{
+export type RecordControl<E> = Partial<{
   [key in Extract<keyof E, string>]: AbstractControl;
 }>;
 
-function entityFactory<E>(entity: Partial<E>): RecordControl<E> {
-  return Object.keys(entity)
-  .reduce((acc, key) => {
-    const value = entity[key];
-    if (typeof value === 'undefined' || value === null) {
-      return acc;
-    }
-    if (Array.isArray(value)) {
-      return { ...acc, [key]: new FormArray(listFactory(value)) };
-    } else if (typeof value === 'object') {
-      return { ...acc, [key]: new FormGroup(entityFactory(value)) };
-    } else {
-      return { ...acc, [key]: new FormControl(entity[key]) };
-    }
-  }, {} as RecordControl<E>)
-}
-
-function listFactory<E>(values: Partial<E>[]) {
-  return values.map(value => entityFactory(value));
-}
-
-export class EntityControl<E = any> extends FormGroup {
+export class EntityControl<E = any, C extends RecordControl<E> = RecordControl<E>> extends FormGroup {
   private _onCollectionChange: () => void;
-  controls: RecordControl<E>;
-  factory = entityFactory;
+  readonly value: Partial<E>;
+  controls: C;
 
   constructor(
-    controls: RecordControl<E>,
+    controls: C,
     validatorOrOpts?: ValidatorFn | ValidatorFn[] | AbstractControlOptions | null,
     asyncValidator?: AsyncValidatorFn | AsyncValidatorFn[] | null
   ) {
     super(controls, validatorOrOpts, asyncValidator);
-    if (!this.factory) {
-      this.factory = entityFactory;
+  }
+
+  get<K extends Extract<keyof C, string>>(key: K): C[K] {
+    return super.get(key) as C[K];
+  }
+
+  /** Get the value without the null */
+  getPrunedValue(): Partial<E> {
+    const isNull = (value: any) => (typeof value === 'object' && value !== null)
+      ? Object.keys(value).every(key => isNull(value[key]))
+      : value === null;
+
+    function pruneObj(value) {
+      return Object.keys(value).reduce((acc, key) => {
+        return isNull(value[key]) ? acc : { ...acc, [key]: prune(value[key]) };
+      }, {});
     }
-  }
 
-  patchValue(entity: Partial<E>, options?: UpdateOptions) {
-    Object.keys(entity).forEach((key: Extract<Partial<keyof E>, string>) => {
-      this.contains(key)
-        ? this.get(key).patchValue(entity[key])
-        : this.controls[key] = this.factory({ [key]: key })
-    });
-    this.updateValueAndValidity(options);
-  }
-
-  get<K extends Extract<keyof E, string>>(key: K): AbstractControl {
-    return super.get(key);
+    function prune(value: any) {
+      return (typeof value === 'object' && value !== null) ? pruneObj(value) : value;
+    }
+    return prune(this.value);
   }
 
   setValue(value: Partial<E>, options: object) {
@@ -68,5 +53,4 @@ export class EntityControl<E = any> extends FormGroup {
   _syncPendingControls(): boolean {
     return super['_syncPendingControls']();
   }
-
 }

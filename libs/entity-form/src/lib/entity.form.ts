@@ -272,7 +272,7 @@ export abstract class EntityForm<
   private _reduceValue() {
     return this._reduceChildren({}, (acc: Record<string, C>, control: C, id: string) => {
       if (control.enabled || this.disabled) {
-        acc[id] = control.value;
+        acc[id] = control.value as any;
       }
       return acc;
     });
